@@ -10,14 +10,14 @@ import logging
 if TYPE_CHECKING:
     from tui_app import TaskManagerApp # Use string hint later if needed
 
-def style_status(status: str) -> Styled:
-    """Return a Styled object for the status string with appropriate color/style.
+def style_status(status: str) -> str:
+    """Return a status string wrapped in Rich markup for appropriate color/style.
     
     Args:
         status: The status string.
         
     Returns:
-        A Textual Styled object.
+        A string with Rich markup tags.
     """
     style = ""
     if status == "To Do":
@@ -28,7 +28,12 @@ def style_status(status: str) -> Styled:
         style = "bold green"
     elif status == "Blocked":
         style = "bold red"
-    return Styled(status, style)
+    
+    # Return string with Rich tags
+    if style:
+        return f"[{style}]{status}[/{style}]"
+    else:
+        return status # Return plain status if no style defined
 
 def _add_rows_recursively(
     table: DataTable, 
@@ -54,12 +59,12 @@ def _add_rows_recursively(
         if task.id not in added_keys:
             # Add the row with indented title
             table.add_row(
-                task.id,
+                task.display_id, # Display the sequential ID
                 f"{indent}{task.title}", # Indented title
                 style_status(task.status),
                 task.priority, 
                 task.task_type,
-                key=task.id
+                key=task.id # KEY remains the UUID
             )
             added_keys.add(task.id)
             # Recursively add children of this task
@@ -105,15 +110,17 @@ def refresh_task_table(table: DataTable, tasks: List[Task], filter_type: Optiona
                  
     # --- Populate Table --- 
     current_cursor_row_key = None
-    if table.cursor_coordinate:
+    current_cursor_col = 0 # Default to column 0
+    if table.row_count > 0 and table.cursor_coordinate and table.is_valid_coordinate(table.cursor_coordinate):
          try:
              current_cursor_row_key = table.get_row_at(table.cursor_coordinate.row)[0] # Get ID from first column
-         except IndexError:
-             current_cursor_row_key = None # Cursor was likely invalid
+             current_cursor_col = table.cursor_coordinate.column # Store previous column
+         except (IndexError, RowDoesNotExist):
+             current_cursor_row_key = None 
+             current_cursor_col = 0
              
     table.clear()
     added_keys: Set[str] = set()
-    # Start recursion from root tasks (those with parent_id=None or orphaned)
     _add_rows_recursively(table, None, tasks_by_parent, tasks_by_id, added_keys, level=0)
     
     # --- Filtering (Simple Approach) ---
@@ -138,16 +145,14 @@ def refresh_task_table(table: DataTable, tasks: List[Task], filter_type: Optiona
         try:
             new_cursor_row_index = table.get_row_index(current_cursor_row_key)
         except KeyError:
-             new_cursor_row_index = None # Row key not found after potential filtering
+             new_cursor_row_index = None 
              
     if new_cursor_row_index is not None:
-        # Ensure the column index is valid (use 0 if previous was out of bounds)
-        col = table.cursor_coordinate.column if table.cursor_coordinate and table.cursor_coordinate.column < table.column_count else 0
-        table.cursor_coordinate = (new_cursor_row_index, col)
+        # Restore previous row and column (or default to 0)
+        table.cursor_coordinate = (new_cursor_row_index, max(0, current_cursor_col)) # Use stored/default column
     elif table.row_count > 0:
         # Move to first row if previous selection is gone or invalid
-        col = table.cursor_coordinate.column if table.cursor_coordinate and table.cursor_coordinate.column < table.column_count else 0
-        table.cursor_coordinate = (0, col) 
+        table.cursor_coordinate = (0, max(0, current_cursor_col)) # Use stored/default column
         
     # print(f"Refreshed table hierarchically. Displaying {len(added_keys)} tasks (Filter: {filter_type or 'All'})")
 

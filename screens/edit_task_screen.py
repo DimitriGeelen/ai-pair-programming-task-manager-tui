@@ -56,7 +56,7 @@ class EditTaskScreen(ModalScreen[Optional[Dict[str, Any]]]): # Update return typ
     }
     #edit-task-buttons {
         margin-top: 1;
-        align: center;
+        align-horizontal: center;
         width: 100%;
     }
     #edit-task-buttons Button {
@@ -84,7 +84,7 @@ class EditTaskScreen(ModalScreen[Optional[Dict[str, Any]]]): # Update return typ
             ("(No Parent)", NO_PARENT_VALUE) # Special value for no parent
         ]
         self.parent_options.extend(
-            (f"{t.id[:4]}...: {t.title}", t.id) # Display truncated ID and title
+            (f"[{t.display_id}] {t.title}", t.id) # Display [display_id] and title, store UUID
             for t in self.all_tasks 
             if t.id != self.task_to_edit.id # Cannot be its own parent
             # TODO: Add check for circular dependency later if needed

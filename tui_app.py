@@ -15,11 +15,15 @@ from textual.reactive import reactive # Import reactive for dynamic updates
 # Import our task manager logic
 from AI_Pair_Programming_Task_Manager import TaskManager, Task 
 from typing import Optional, Dict, List # Ensure List is imported
+import logging # Import logging
 # --- Import Screens ---
 from screens.add_task_screen import AddTaskScreen
 from screens.confirm_delete_screen import ConfirmDeleteScreen
 from screens.helpers import style_status, refresh_task_table, cycle_task_status, cycle_task_priority # Import new helpers
 from screens.edit_task_screen import EditTaskScreen # Import EditTaskScreen
+
+# Setup logger for this module
+logger = logging.getLogger(__name__) 
 
 # --- Confirm Delete Screen ---
 # Removed class definition
@@ -77,12 +81,12 @@ class TaskManagerApp(App):
             # Add task data as a row
             # Ensure data matches column order and type
             table.add_row(
-                task.id,
+                task.display_id, # Display the sequential ID
                 task.title, 
                 style_status(task.status), # Use imported function
                 task.priority, 
                 task.task_type,
-                key=task.id # Use task ID as the row key for later reference
+                key=task.id # Use task UUID ID as the row key
             )
         # print(f"Mounted and loaded {len(tasks)} tasks into table.") # Debug
 
